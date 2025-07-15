@@ -38,7 +38,7 @@ start_backend() {
     fi
     
     # Start the Flask server
-    echo "🌐 Starting Flask server on port 5000..."
+    echo "🌐 Starting Flask server on port 5001..."
     python app.py &
     BACKEND_PID=$!
     cd ..
@@ -58,8 +58,8 @@ start_frontend() {
     fi
     
     # Start the React development server
-    echo "🌐 Starting React development server on port 3000..."
-    npm start &
+    echo "🌐 Starting React development server on port 3001..."
+    PORT=3001 npm start &
     FRONTEND_PID=$!
     cd ..
     
@@ -94,8 +94,8 @@ start_frontend
 
 echo ""
 echo "🎉 SIF-400 Digital Twin is starting up!"
-echo "📊 Backend API: http://localhost:5000"
-echo "🖥️  Frontend UI: http://localhost:3000"
+echo "📊 Backend API: http://localhost:5001"
+echo "🖥️  Frontend UI: http://localhost:3001"
 echo ""
 echo "Press Ctrl+C to stop all services"
 echo ""
@@ -104,7 +104,7 @@ echo ""
 sleep 5
 
 # Check if services are running
-if curl -s http://localhost:5000/api/stations > /dev/null 2>&1; then
+if curl -s http://localhost:5001/api/stations > /dev/null 2>&1; then
     echo "✅ Backend is running and responding"
 else
     echo "⚠️  Backend may not be fully started yet"

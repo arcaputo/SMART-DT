@@ -25,5 +25,5 @@ pkill -9 -f "python app.py" 2>/dev/null
 pkill -9 -f "react-scripts start" 2>/dev/null
 
 echo "✅ All services stopped"
-echo "📊 Backend (port 5000) - stopped"
-echo "🖥️  Frontend (port 3000) - stopped"
+echo "📊 Backend (port 5001) - stopped"
+echo "🖥️  Frontend (port 3001) - stopped"

@@ -81,6 +81,13 @@ class StationSimulator:
         }
         self.running = False
         self.thread = None
+        # Dynamic thresholds - can be updated via API
+        self.thresholds = {
+            'voltage_min': 216.0,
+            'voltage_max': 224.0,
+            'current_min': 14.5,
+            'current_max': 15.8
+        }
     
     def start(self):
         if not self.running:
@@ -106,16 +113,16 @@ class StationSimulator:
                     data['current'] = max(14, min(16, data['current'] + current_variation))
                     data['power'] = data['voltage'] * data['current']
                     
-                    # Determine status and create alerts
+                    # Determine status and create alerts using dynamic thresholds
                     status = 'normal'
-                    if data['voltage'] < 216 or data['voltage'] > 224:
+                    if data['voltage'] < self.thresholds['voltage_min'] or data['voltage'] > self.thresholds['voltage_max']:
                         status = 'warning'
                         self._create_alert(conn, station_id, 'voltage', 
-                                         f'Voltage anomaly: {data["voltage"]:.1f}V', 'warning')
-                    elif data['current'] < 14.5 or data['current'] > 15.8:
+                                         f'Voltage anomaly: {data["voltage"]:.1f}V (threshold: {self.thresholds["voltage_min"]:.1f}-{self.thresholds["voltage_max"]:.1f}V)', 'warning')
+                    elif data['current'] < self.thresholds['current_min'] or data['current'] > self.thresholds['current_max']:
                         status = 'warning'
                         self._create_alert(conn, station_id, 'current', 
-                                         f'Current anomaly: {data["current"]:.1f}A', 'warning')
+                                         f'Current anomaly: {data["current"]:.1f}A (threshold: {self.thresholds["current_min"]:.1f}-{self.thresholds["current_max"]:.1f}A)', 'warning')
                     
                     data['status'] = status
                     
@@ -238,11 +245,49 @@ def chat():
     
     return jsonify({'response': response})
 
+@app.route('/api/thresholds', methods=['GET'])
+def get_thresholds():
+    return jsonify(simulator.thresholds)
+
+@app.route('/api/thresholds', methods=['PUT'])
+def update_thresholds():
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'Threshold data is required'}), 400
+    
+    # Validate threshold values
+    required_fields = ['voltage_min', 'voltage_max', 'current_min', 'current_max']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({'error': f'Missing required field: {field}'}), 400
+        if not isinstance(data[field], (int, float)) or data[field] < 0:
+            return jsonify({'error': f'Invalid value for {field}: must be a positive number'}), 400
+    
+    # Validate logical constraints
+    if data['voltage_min'] >= data['voltage_max']:
+        return jsonify({'error': 'voltage_min must be less than voltage_max'}), 400
+    if data['current_min'] >= data['current_max']:
+        return jsonify({'error': 'current_min must be less than current_max'}), 400
+    
+    # Update thresholds
+    simulator.thresholds.update(data)
+    
+    # Update NLP service with new thresholds
+    nlp_service.set_thresholds(simulator.thresholds)
+    
+    return jsonify({
+        'message': 'Thresholds updated successfully',
+        'thresholds': simulator.thresholds
+    })
+
 
 if __name__ == '__main__':
     init_db()
+    # Initialize NLP service with current thresholds
+    nlp_service.set_thresholds(simulator.thresholds)
     simulator.start()
     try:
-        app.run(debug=True, host='0.0.0.0', port=5000)
+        app.run(debug=True, host='0.0.0.0', port=5001)
     finally:
         simulator.stop()

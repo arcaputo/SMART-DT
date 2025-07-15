@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Activity, AlertTriangle, CheckCircle, MessageSquare, Send, Zap, TrendingUp, Bot } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle, MessageSquare, Send, Zap, TrendingUp, Bot, Settings, ChevronDown, ChevronUp } from 'lucide-react';
 
 const SIF400DigitalTwin = () => {
   // State management
@@ -11,10 +11,18 @@ const SIF400DigitalTwin = () => {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  const [showThresholdConfig, setShowThresholdConfig] = useState(false);
+  const [thresholds, setThresholds] = useState({
+    voltage_min: 216.0,
+    voltage_max: 224.0,
+    current_min: 14.5,
+    current_max: 15.8
+  });
+  const [tempThresholds, setTempThresholds] = useState({ ...thresholds });
   const chatEndRef = useRef(null);
 
   // API base URL
-  const API_BASE = 'http://localhost:5000/api';
+  const API_BASE = 'http://localhost:5001/api';
 
   // Fetch current station status
   const fetchStationStatus = async () => {
@@ -46,11 +54,67 @@ const SIF400DigitalTwin = () => {
     }
   };
 
+  // Fetch current thresholds
+  const fetchThresholds = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/thresholds`);
+      if (response.ok) {
+        const data = await response.json();
+        setThresholds(data);
+        setTempThresholds(data);
+      }
+    } catch (error) {
+      console.error('Error fetching thresholds:', error);
+    }
+  };
+
+  // Update thresholds
+  const updateThresholds = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/thresholds`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(tempThresholds),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setThresholds(data.thresholds);
+        setShowThresholdConfig(false);
+        // Add success message to chat
+        setChatMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `✅ Threshold configuration updated successfully!\n\nNew thresholds:\n• Voltage: ${data.thresholds.voltage_min}V - ${data.thresholds.voltage_max}V\n• Current: ${data.thresholds.current_min}A - ${data.thresholds.current_max}A`
+        }]);
+      } else {
+        const error = await response.json();
+        setChatMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `❌ Error updating thresholds: ${error.error}`
+        }]);
+      }
+    } catch (error) {
+      console.error('Error updating thresholds:', error);
+      setChatMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '❌ Failed to update thresholds. Please check your connection.'
+      }]);
+    }
+  };
+
+  // Reset thresholds to current values
+  const resetThresholds = () => {
+    setTempThresholds({ ...thresholds });
+  };
+
   // Real-time data updates
   useEffect(() => {
     // Initial fetch
     fetchStationStatus();
     fetchAlerts();
+    fetchThresholds();
     
     // Set up polling for real-time updates
     const interval = setInterval(() => {
@@ -179,6 +243,151 @@ const SIF400DigitalTwin = () => {
     );
   };
 
+  // Threshold Configuration Component
+  const ThresholdConfig = () => {
+    const handleSliderChange = (field, value) => {
+      setTempThresholds(prev => ({
+        ...prev,
+        [field]: parseFloat(value)
+      }));
+    };
+
+    return (
+      <div className="mt-4 bg-gray-50 rounded-xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+            <Settings className="w-5 h-5" />
+            Anomaly Threshold Configuration
+          </h3>
+          <button
+            onClick={() => setShowThresholdConfig(!showThresholdConfig)}
+            className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            {showThresholdConfig ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          </button>
+        </div>
+
+        {showThresholdConfig && (
+          <div className="space-y-6">
+            {/* Voltage Thresholds */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Voltage Minimum: {tempThresholds.voltage_min}V
+                </label>
+                <input
+                  type="range"
+                  min="200"
+                  max="230"
+                  step="0.1"
+                  value={tempThresholds.voltage_min}
+                  onChange={(e) => handleSliderChange('voltage_min', e.target.value)}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                />
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>200V</span>
+                  <span>230V</span>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Voltage Maximum: {tempThresholds.voltage_max}V
+                </label>
+                <input
+                  type="range"
+                  min="200"
+                  max="230"
+                  step="0.1"
+                  value={tempThresholds.voltage_max}
+                  onChange={(e) => handleSliderChange('voltage_max', e.target.value)}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                />
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>200V</span>
+                  <span>230V</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Current Thresholds */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Current Minimum: {tempThresholds.current_min}A
+                </label>
+                <input
+                  type="range"
+                  min="10"
+                  max="20"
+                  step="0.1"
+                  value={tempThresholds.current_min}
+                  onChange={(e) => handleSliderChange('current_min', e.target.value)}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                />
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>10A</span>
+                  <span>20A</span>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Current Maximum: {tempThresholds.current_max}A
+                </label>
+                <input
+                  type="range"
+                  min="10"
+                  max="20"
+                  step="0.1"
+                  value={tempThresholds.current_max}
+                  onChange={(e) => handleSliderChange('current_max', e.target.value)}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                />
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>10A</span>
+                  <span>20A</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-4">
+              <button
+                onClick={updateThresholds}
+                disabled={connectionStatus !== 'connected'}
+                className="flex-1 bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Apply Thresholds
+              </button>
+              <button
+                onClick={resetThresholds}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Reset
+              </button>
+            </div>
+
+            {/* Current Values Display */}
+            <div className="bg-white rounded-lg p-4 mt-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Current Threshold Settings:</h4>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-600">Voltage Range:</span>
+                  <span className="font-medium ml-2">{thresholds.voltage_min}V - {thresholds.voltage_max}V</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Current Range:</span>
+                  <span className="font-medium ml-2">{thresholds.current_min}A - {thresholds.current_max}A</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Connection status indicator
   const ConnectionIndicator = () => {
     const getStatusColor = () => {
@@ -222,6 +431,9 @@ const SIF400DigitalTwin = () => {
             </div>
             <ConnectionIndicator />
           </div>
+          
+          {/* Threshold Configuration Section */}
+          <ThresholdConfig />
         </div>
 
         {/* Main Grid */}

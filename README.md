@@ -59,7 +59,7 @@ pip install -r requirements.txt
 python app.py
 ```
 
-The backend will start on `http://localhost:5000`
+The backend will start on `http://localhost:5001`
 
 ### Frontend Setup
 
@@ -78,13 +78,13 @@ npm install
 npm start
 ```
 
-The frontend will start on `http://localhost:3000`
+The frontend will start on `http://localhost:3001`
 
 ## Usage
 
 1. **Start the Backend**: Run the Python Flask server first
 2. **Start the Frontend**: Run the React development server
-3. **Access the Application**: Open your browser to `http://localhost:3000`
+3. **Access the Application**: Open your browser to `http://localhost:3001`
 
 ### Natural Language Queries
 
@@ -143,7 +143,7 @@ The database is automatically initialized when the backend starts. Data is persi
 
 ### Common Issues
 
-1. **Connection Errors**: Ensure backend is running on port 5000
+1. **Connection Errors**: Ensure backend is running on port 5001
 2. **Database Issues**: Delete `sif400.db` to reset the database
 3. **Port Conflicts**: Change ports in the configuration files if needed
 

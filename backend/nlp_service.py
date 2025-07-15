@@ -8,11 +8,16 @@ class NLPService:
     def __init__(self, db_path: str = 'sif400.db'):
         self.db_path = db_path
         self.stations = ['SIF-401', 'SIF-402', 'SIF-405', 'SIF-407']
+        self.thresholds = None  # Will be set by the main app
         
     def get_db_connection(self):
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         return conn
+    
+    def set_thresholds(self, thresholds: Dict):
+        """Update the thresholds reference from the main application"""
+        self.thresholds = thresholds
     
     def process_query(self, query: str) -> str:
         """Process natural language query and return appropriate response"""
